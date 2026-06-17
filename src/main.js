@@ -3,14 +3,14 @@ import { TypingEngine } from './engine.js';
 import { isOnboardingComplete, getSettings } from './storage.js';
 import { initOnboarding } from './onboarding.js';
 import { renderDashboard } from './dashboard.js';
-import { renderModePicker } from './modes.js';
+import { renderModePicker, getMode } from './modes.js';
 import { SessionController } from './session.js';
 
 const BASE = import.meta.env.BASE_URL; // '/' in dev, '/type.sh/' on Pages
 const MANIFEST_URL = `${BASE}snippets/snippets.json`;
 const SNIPPET_BASE = `${BASE}snippets/`;
 
-// --- element references -----------------------------------------------------
+const DEFAULT_MODE = 'training'; // relaxed, typing-first landing
 
 const $ = (id) => document.getElementById(id);
 
@@ -38,15 +38,14 @@ const dashEls = {
   startBtn: $('start-coding'),
 };
 
-const modalEls = {
-  modal: $('mode-modal'),
-  grid: $('mode-grid'),
-  close: $('mode-close'),
-};
+const modalEls = { modal: $('mode-modal'), grid: $('mode-grid'), close: $('mode-close') };
 
 const sessionEls = {
   mode: $('sess-mode'),
   lang: $('sess-lang'),
+  language: $('sess-language'),
+  modesBtn: $('sess-modes'),
+  exit: $('sess-exit'),
   wpm: $('sess-wpm'),
   accuracy: $('sess-accuracy'),
   timer: $('sess-timer'),
@@ -56,7 +55,6 @@ const sessionEls = {
   focusNote: $('focus-note'),
   overlay: $('overlay'),
   result: $('result'),
-  exit: $('sess-exit'),
 };
 
 // --- view routing -----------------------------------------------------------
@@ -93,7 +91,7 @@ function selectableLanguages() {
 
 async function getSnippet(language) {
   let pool = manifest.filter((s) => s.language === language);
-  if (pool.length === 0) pool = manifest; // safety fallback
+  if (pool.length === 0) pool = manifest;
   const meta = pool[Math.floor(Math.random() * pool.length)];
   const res = await fetch(`${SNIPPET_BASE}${meta.file}`);
   if (!res.ok) throw new Error(`Could not load snippet "${meta.file}" (${res.status})`);
@@ -104,14 +102,32 @@ async function getSnippet(language) {
 
 const engine = new TypingEngine({ codeEl: sessionEls.code, inputEl: sessionEls.input });
 
-const session = new SessionController({
-  engine,
-  getSnippet,
-  onExit: goDashboard,
-  els: sessionEls,
-});
+const session = new SessionController({ engine, getSnippet, onExit: goDashboard, els: sessionEls });
 
-// --- navigation actions -----------------------------------------------------
+let activeMode = getMode(DEFAULT_MODE);
+
+// --- navigation -------------------------------------------------------------
+
+function startSession(mode, language) {
+  activeMode = mode;
+  sessionEls.language.value = language;
+  showView('session');
+  engine.focus(); // focus inside the user-gesture before the async load resolves
+  session.start(mode, language);
+
+  // Safety net: if the browser refused auto-focus, surface the click-to-focus
+  // hint so keystrokes are never silently dropped.
+  setTimeout(() => {
+    if (
+      currentView === 'session' &&
+      document.activeElement !== sessionEls.input &&
+      !sessionEls.overlay.classList.contains('visible')
+    ) {
+      sessionEls.focusNote.classList.add('visible');
+      sessionEls.code.classList.add('blurred');
+    }
+  }, 200);
+}
 
 function goDashboard() {
   session.exit();
@@ -132,13 +148,22 @@ function startMode(mode) {
   closeModal();
   const language =
     mode.content === 'pattern' ? 'Pattern' : getSettings().preferredLanguage || 'JavaScript';
-  showView('session');
-  session.start(mode, language);
+  startSession(mode, language);
 }
 
-// --- session-view focus handling -------------------------------------------
+// --- session-view input wiring ---------------------------------------------
 
-function setupSessionFocus() {
+function populateLanguageSelect() {
+  sessionEls.language.innerHTML = '';
+  for (const lang of selectableLanguages()) {
+    const opt = document.createElement('option');
+    opt.value = lang;
+    opt.textContent = lang;
+    sessionEls.language.appendChild(opt);
+  }
+}
+
+function setupSessionControls() {
   const refocus = (e) => {
     e.preventDefault();
     engine.focus();
@@ -157,6 +182,11 @@ function setupSessionFocus() {
     sessionEls.code.classList.remove('blurred');
   });
 
+  sessionEls.language.addEventListener('change', () => {
+    // Switching language keeps the active mode but always uses that language.
+    startSession(activeMode, sessionEls.language.value);
+  });
+  sessionEls.modesBtn.addEventListener('click', openModePicker);
   sessionEls.exit.addEventListener('click', goDashboard);
 }
 
@@ -174,9 +204,14 @@ function setupShortcuts() {
 
 // --- bootstrap --------------------------------------------------------------
 
+function startDefaultSession() {
+  const lang = getSettings().preferredLanguage || selectableLanguages()[0] || 'JavaScript';
+  startSession(getMode(DEFAULT_MODE), lang);
+}
+
 async function init() {
   applyCursor(getSettings().cursorStyle);
-  setupSessionFocus();
+  setupSessionControls();
   setupShortcuts();
 
   try {
@@ -188,18 +223,20 @@ async function init() {
     return;
   }
 
+  populateLanguageSelect();
+
   if (!isOnboardingComplete()) {
     initOnboarding(onboardingEls, {
       languages: selectableLanguages(),
       onCursorPreview: applyCursor,
       onComplete: (settings) => {
         applyCursor(settings.cursorStyle);
-        goDashboard();
+        startDefaultSession(); // land straight in the typing view
       },
     });
     showView('onboarding');
   } else {
-    goDashboard();
+    startDefaultSession();
   }
 }
 
