@@ -1,0 +1,20 @@
+[
+  {
+    "id": "js-1",
+    "language": "JavaScript",
+    "difficulty": "medium",
+    "file": "js-1.txt"
+  },
+  {
+    "id": "kt-1",
+    "language": "Kotlin",
+    "difficulty": "medium",
+    "file": "kt-1.txt"
+  },
+  {
+    "id": "cpp-1",
+    "language": "C++",
+    "difficulty": "medium",
+    "file": "cpp-1.txt"
+  }
+]

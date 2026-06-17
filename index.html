@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>type.sh — code typing trainer</title>
+    <meta
+      name="description"
+      content="A minimal code typing trainer for JavaScript, Kotlin and C++ with a Catppuccin Mocha theme."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e1e2e'/%3E%3Ctext x='14' y='66' font-family='monospace' font-size='44' fill='%23cba6f7'%3E&gt;_%3C/text%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="brand">
+          <span class="brand-prompt">~/</span><span class="brand-name">type</span><span
+            class="brand-ext"
+            >.sh</span
+          >
+        </div>
+
+        <div class="controls">
+          <label class="field" for="language-select">
+            <span class="field-label">Language</span>
+            <select id="language-select" aria-label="Select programming language"></select>
+          </label>
+        </div>
+
+        <div class="stats" role="status" aria-live="polite">
+          <div class="stat">
+            <span class="stat-value" id="stat-wpm">0</span>
+            <span class="stat-label">WPM</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-accuracy">100%</span>
+            <span class="stat-label">Accuracy</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="subheader">
+        <div id="highscore" class="highscore empty">Personal Highscore — no record yet</div>
+        <button id="restart" class="btn ghost" type="button" title="Restart (Esc)">
+          ↻ Restart
+        </button>
+      </div>
+
+      <main class="stage">
+        <div class="progress" aria-hidden="true">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+
+        <div class="code-wrap">
+          <div id="code" class="code" tabindex="-1" aria-label="Code to type"></div>
+
+          <div id="focus-note" class="focus-note">Click here or start typing to focus</div>
+
+          <div id="overlay" class="overlay">
+            <div id="result" class="result"></div>
+          </div>
+        </div>
+
+        <!-- Hidden input: captures keystrokes and brings up the mobile keyboard. -->
+        <input
+          id="hidden-input"
+          class="hidden-input"
+          type="text"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-hidden="true"
+          tabindex="0"
+        />
+      </main>
+
+      <footer class="footer">
+        <span>Catppuccin Mocha</span>
+        <span class="dot">•</span>
+        <span>Enter auto-skips indentation</span>
+        <span class="dot">•</span>
+        <span>Esc to restart</span>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
