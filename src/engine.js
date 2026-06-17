@@ -13,11 +13,12 @@
 const WHITESPACE = new Set([' ', '\t']);
 
 export class TypingEngine {
-  constructor({ codeEl, inputEl, onStats, onFinish }) {
+  constructor({ codeEl, inputEl, onStats, onFinish, onError }) {
     this.codeEl = codeEl;
     this.inputEl = inputEl;
     this.onStats = onStats || (() => {});
     this.onFinish = onFinish || (() => {});
+    this.onError = onError || (() => {}); // called on each wrong keystroke
 
     this.expected = '';
     this.spans = [];
@@ -151,6 +152,7 @@ export class TypingEngine {
     } else {
       this._mark(this.index, 'incorrect');
       this.errors++;
+      this.onError();
     }
     this.index++;
     this._afterAdvance();
@@ -261,7 +263,17 @@ export class TypingEngine {
     const keystrokes = this.correct + this.errors;
     const accuracy = keystrokes > 0 ? Math.round((this.correct / keystrokes) * 100) : 100;
     const progress = this.expected.length ? this.index / this.expected.length : 0;
-    return { wpm, accuracy, progress, errors: this.errors, elapsedMs };
+    return { wpm, accuracy, progress, correct: this.correct, errors: this.errors, elapsedMs };
+  }
+
+  /** Stop accepting input (used when an external timer/mode ends the run). */
+  stop() {
+    this.finished = true;
+    this._stopTicker();
+    if (this._cursorSpan) {
+      this._cursorSpan.classList.remove('current');
+      this._cursorSpan = null;
+    }
   }
 
   _emitStats() {

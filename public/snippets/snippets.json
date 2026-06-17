@@ -1,20 +1,10 @@
 [
-  {
-    "id": "js-1",
-    "language": "JavaScript",
-    "difficulty": "medium",
-    "file": "js-1.txt"
-  },
-  {
-    "id": "kt-1",
-    "language": "Kotlin",
-    "difficulty": "medium",
-    "file": "kt-1.txt"
-  },
-  {
-    "id": "cpp-1",
-    "language": "C++",
-    "difficulty": "medium",
-    "file": "cpp-1.txt"
-  }
+  { "id": "js-1", "language": "JavaScript", "difficulty": "medium", "file": "js-1.txt" },
+  { "id": "js-2", "language": "JavaScript", "difficulty": "medium", "file": "js-2.txt" },
+  { "id": "kt-1", "language": "Kotlin", "difficulty": "medium", "file": "kt-1.txt" },
+  { "id": "kt-2", "language": "Kotlin", "difficulty": "medium", "file": "kt-2.txt" },
+  { "id": "cpp-1", "language": "C++", "difficulty": "medium", "file": "cpp-1.txt" },
+  { "id": "cpp-2", "language": "C++", "difficulty": "medium", "file": "cpp-2.txt" },
+  { "id": "chaos-1", "language": "Pattern", "difficulty": "hard", "file": "chaos-1.txt" },
+  { "id": "chaos-2", "language": "Pattern", "difficulty": "hard", "file": "chaos-2.txt" }
 ]

@@ -1,0 +1,4 @@
+const re = /^[a-z0-9._%+-]+@[a-z.-]+\.[a-z]{2,}$/i;
+const f = (x) => (x ?? 0) ** 2 - (x & 0xff);
+arr.filter((n) => n % 2 === 0).map((n) => n << 1);
+const tag = obj?.meta?.tags?.[0] || "<none>";

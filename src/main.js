@@ -1,78 +1,82 @@
 import './style.css';
 import { TypingEngine } from './engine.js';
-import { getHighscore, saveResult } from './storage.js';
+import { isOnboardingComplete, getSettings } from './storage.js';
+import { initOnboarding } from './onboarding.js';
+import { renderDashboard } from './dashboard.js';
+import { renderModePicker } from './modes.js';
+import { SessionController } from './session.js';
 
-// import.meta.env.BASE_URL mirrors the Vite `base` option ('/' in dev, '/type.sh/' on Pages).
-const MANIFEST_URL = `${import.meta.env.BASE_URL}snippets/snippets.json`;
-const SNIPPET_BASE = `${import.meta.env.BASE_URL}snippets/`;
+const BASE = import.meta.env.BASE_URL; // '/' in dev, '/type.sh/' on Pages
+const MANIFEST_URL = `${BASE}snippets/snippets.json`;
+const SNIPPET_BASE = `${BASE}snippets/`;
 
-const els = {
-  language: document.getElementById('language-select'),
-  highscore: document.getElementById('highscore'),
-  wpm: document.getElementById('stat-wpm'),
-  accuracy: document.getElementById('stat-accuracy'),
-  progress: document.getElementById('progress-bar'),
-  code: document.getElementById('code'),
-  input: document.getElementById('hidden-input'),
-  restart: document.getElementById('restart'),
-  overlay: document.getElementById('overlay'),
-  result: document.getElementById('result'),
-  focusNote: document.getElementById('focus-note'),
+// --- element references -----------------------------------------------------
+
+const $ = (id) => document.getElementById(id);
+
+const views = {
+  onboarding: $('view-onboarding'),
+  dashboard: $('view-dashboard'),
+  session: $('view-session'),
 };
 
-let manifest = [];
-let current = null; // { id, language, difficulty, file, text }
+const onboardingEls = {
+  form: $('onboarding-form'),
+  name: $('ob-name'),
+  save: $('ob-save'),
+  language: $('ob-language'),
+  cursorInputs: document.querySelectorAll('input[name="cursor"]'),
+};
 
-const engine = new TypingEngine({
-  codeEl: els.code,
-  inputEl: els.input,
-  onStats: renderStats,
-  onFinish: handleFinish,
-});
+const dashEls = {
+  greeting: $('dash-greeting'),
+  streak: $('dash-streak'),
+  chartCanvas: $('wpm-chart'),
+  chartNote: $('chart-note'),
+  heatmap: $('heatmap'),
+  recent: $('recent-body'),
+  startBtn: $('start-coding'),
+};
 
-// --- rendering --------------------------------------------------------------
+const modalEls = {
+  modal: $('mode-modal'),
+  grid: $('mode-grid'),
+  close: $('mode-close'),
+};
 
-function renderStats({ wpm, accuracy, progress }) {
-  els.wpm.textContent = wpm;
-  els.accuracy.textContent = `${accuracy}%`;
-  els.progress.style.width = `${Math.round(progress * 100)}%`;
-}
+const sessionEls = {
+  mode: $('sess-mode'),
+  lang: $('sess-lang'),
+  wpm: $('sess-wpm'),
+  accuracy: $('sess-accuracy'),
+  timer: $('sess-timer'),
+  progress: $('sess-progress'),
+  code: $('code'),
+  input: $('hidden-input'),
+  focusNote: $('focus-note'),
+  overlay: $('overlay'),
+  result: $('result'),
+  exit: $('sess-exit'),
+};
 
-function renderHighscore(language) {
-  const hs = getHighscore(language);
-  if (hs) {
-    els.highscore.textContent = `Personal Highscore — ${hs.wpm} WPM · ${hs.accuracy}% accuracy`;
-    els.highscore.classList.remove('empty');
-  } else {
-    els.highscore.textContent = `Personal Highscore — no record yet for ${language}`;
-    els.highscore.classList.add('empty');
+// --- view routing -----------------------------------------------------------
+
+let currentView = null;
+
+function showView(name) {
+  currentView = name;
+  for (const [key, el] of Object.entries(views)) {
+    el.classList.toggle('active', key === name);
   }
 }
 
-function handleFinish(stats) {
-  const { language } = current;
-  const { improved } = saveResult(language, stats.wpm, stats.accuracy);
-  renderHighscore(language);
-
-  const badge =
-    improved.wpm || improved.accuracy
-      ? '<div class="result-badge">★ New personal best!</div>'
-      : '';
-
-  els.result.innerHTML = `
-    <h2>nice — snippet complete</h2>
-    <div class="result-stats">
-      <span class="result-stat"><strong>${stats.wpm}</strong> WPM</span>
-      <span class="result-stat"><strong>${stats.accuracy}%</strong> accuracy</span>
-    </div>
-    ${badge}
-    <button id="result-restart" class="btn primary" type="button">Restart · Esc</button>
-  `;
-  els.overlay.classList.add('visible');
-  document.getElementById('result-restart').addEventListener('click', restart);
+function applyCursor(style) {
+  document.documentElement.dataset.cursor = style || 'line';
 }
 
-// --- data loading -----------------------------------------------------------
+// --- snippet loading --------------------------------------------------------
+
+let manifest = [];
 
 async function loadManifest() {
   const res = await fetch(MANIFEST_URL);
@@ -83,83 +87,87 @@ async function loadManifest() {
   }
 }
 
-function languages() {
-  return [...new Set(manifest.map((s) => s.language))];
+function selectableLanguages() {
+  return [...new Set(manifest.map((s) => s.language))].filter((l) => l !== 'Pattern');
 }
 
-function populateLanguageSelect() {
-  els.language.innerHTML = '';
-  for (const lang of languages()) {
-    const opt = document.createElement('option');
-    opt.value = lang;
-    opt.textContent = lang;
-    els.language.appendChild(opt);
-  }
-}
-
-function pickSnippet(language) {
-  const pool = manifest.filter((s) => s.language === language);
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-async function loadSnippet(meta) {
+async function getSnippet(language) {
+  let pool = manifest.filter((s) => s.language === language);
+  if (pool.length === 0) pool = manifest; // safety fallback
+  const meta = pool[Math.floor(Math.random() * pool.length)];
   const res = await fetch(`${SNIPPET_BASE}${meta.file}`);
   if (!res.ok) throw new Error(`Could not load snippet "${meta.file}" (${res.status})`);
-  const text = await res.text();
-  current = { ...meta, text };
-  hideOverlay();
-  engine.load(text);
+  return res.text();
 }
 
-async function selectLanguage(language) {
-  renderHighscore(language);
-  await loadSnippet(pickSnippet(language));
+// --- engine + session -------------------------------------------------------
+
+const engine = new TypingEngine({ codeEl: sessionEls.code, inputEl: sessionEls.input });
+
+const session = new SessionController({
+  engine,
+  getSnippet,
+  onExit: goDashboard,
+  els: sessionEls,
+});
+
+// --- navigation actions -----------------------------------------------------
+
+function goDashboard() {
+  session.exit();
+  renderDashboard(dashEls, { onStart: openModePicker });
+  showView('dashboard');
 }
 
-function restart() {
-  hideOverlay();
-  // Re-pick a snippet for the current language so "restart" can serve variety
-  // when more than one snippet exists; falls back to the same one otherwise.
-  if (current) {
-    loadSnippet(pickSnippet(current.language));
-  }
+function openModePicker() {
+  renderModePicker(modalEls, { onPick: startMode, onClose: closeModal });
+  modalEls.modal.classList.add('visible');
 }
 
-function hideOverlay() {
-  els.overlay.classList.remove('visible');
+function closeModal() {
+  modalEls.modal.classList.remove('visible');
 }
 
-// --- focus + shortcuts ------------------------------------------------------
+function startMode(mode) {
+  closeModal();
+  const language =
+    mode.content === 'pattern' ? 'Pattern' : getSettings().preferredLanguage || 'JavaScript';
+  showView('session');
+  session.start(mode, language);
+}
 
-function setupFocus() {
-  // Clicking the code keeps the real (hidden) input focused.
-  els.code.addEventListener('mousedown', (e) => {
+// --- session-view focus handling -------------------------------------------
+
+function setupSessionFocus() {
+  const refocus = (e) => {
     e.preventDefault();
     engine.focus();
-  });
-  els.focusNote.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    engine.focus();
-  });
+  };
+  sessionEls.code.addEventListener('mousedown', refocus);
+  sessionEls.focusNote.addEventListener('mousedown', refocus);
 
-  els.input.addEventListener('blur', () => {
-    if (!els.overlay.classList.contains('visible')) {
-      els.focusNote.classList.add('visible');
-      els.code.classList.add('blurred');
+  sessionEls.input.addEventListener('blur', () => {
+    if (currentView === 'session' && !sessionEls.overlay.classList.contains('visible')) {
+      sessionEls.focusNote.classList.add('visible');
+      sessionEls.code.classList.add('blurred');
     }
   });
-  els.input.addEventListener('focus', () => {
-    els.focusNote.classList.remove('visible');
-    els.code.classList.remove('blurred');
+  sessionEls.input.addEventListener('focus', () => {
+    sessionEls.focusNote.classList.remove('visible');
+    sessionEls.code.classList.remove('blurred');
   });
+
+  sessionEls.exit.addEventListener('click', goDashboard);
 }
 
 function setupShortcuts() {
-  els.restart.addEventListener('click', restart);
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
+    if (e.key !== 'Escape') return;
+    if (modalEls.modal.classList.contains('visible')) {
+      closeModal();
+    } else if (currentView === 'session') {
       e.preventDefault();
-      restart();
+      goDashboard();
     }
   });
 }
@@ -167,16 +175,31 @@ function setupShortcuts() {
 // --- bootstrap --------------------------------------------------------------
 
 async function init() {
-  setupFocus();
+  applyCursor(getSettings().cursorStyle);
+  setupSessionFocus();
   setupShortcuts();
+
   try {
     await loadManifest();
-    populateLanguageSelect();
-    els.language.addEventListener('change', () => selectLanguage(els.language.value));
-    await selectLanguage(els.language.value);
   } catch (err) {
     console.error(err);
-    els.code.textContent = `⚠ ${err.message}`;
+    sessionEls.code.textContent = `⚠ ${err.message}`;
+    showView('session');
+    return;
+  }
+
+  if (!isOnboardingComplete()) {
+    initOnboarding(onboardingEls, {
+      languages: selectableLanguages(),
+      onCursorPreview: applyCursor,
+      onComplete: (settings) => {
+        applyCursor(settings.cursorStyle);
+        goDashboard();
+      },
+    });
+    showView('onboarding');
+  } else {
+    goDashboard();
   }
 }
 

@@ -1,0 +1,10 @@
+async function fetchUsers(ids) {
+  const results = [];
+  for (const id of ids) {
+    const res = await fetch(`/api/users/${id}`);
+    if (res.ok) {
+      results.push(await res.json());
+    }
+  }
+  return results;
+}
