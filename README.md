@@ -39,8 +39,11 @@ A prominent **Start Coding** button opens a mode picker:
 | **Training Grounds** | 15:00 min | Warm up and experiment without pressure.        |
 | **Pattern Chaos**    | 1:00 min | The Pinky Gym: master complex syntax and symbols.|
 
-Picking a mode starts the typing interface with a countdown. Timed runs loop in
-fresh snippets until the clock runs out; stats accumulate across them.
+You land **directly in the typing view** (codetype-style); the dashboard is one
+click away. A run is **one snippet**: completing it (or hitting the mode's time
+cap, or — in Zero Tolerance — making a mistake) ends the run and shows your
+result with **Next snippet / Retry / Dashboard**. Language and mode can be
+switched inline from the top bar.
 
 ### Typing engine
 

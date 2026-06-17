@@ -137,13 +137,24 @@
     <!-- ============================== SESSION ============================= -->
     <section id="view-session" class="view session">
       <header class="sess-bar">
-        <button id="sess-exit" class="btn ghost" type="button" title="Back to dashboard (Esc)">
-          ← Dashboard
-        </button>
-        <div class="sess-meta">
-          <span id="sess-mode" class="sess-mode">Mode</span>
-          <span id="sess-lang" class="sess-lang">Language</span>
+        <div class="brand brand-sm">
+          <span class="brand-prompt">~/</span><span class="brand-name">type</span><span
+            class="brand-ext"
+            >.sh</span
+          >
         </div>
+
+        <div class="sess-controls">
+          <select id="sess-language" aria-label="Language" title="Change language"></select>
+          <button id="sess-modes" class="btn ghost btn-sm" type="button" title="Choose mode">
+            ⇆ <span id="sess-mode">Mode</span>
+          </button>
+          <button id="sess-exit" class="btn ghost btn-sm" type="button" title="Dashboard (Esc)">
+            📊 Dashboard
+          </button>
+          <span id="sess-lang" hidden></span>
+        </div>
+
         <div class="sess-stats">
           <div class="stat stat-timer">
             <span class="stat-value" id="sess-timer">0:00</span>
