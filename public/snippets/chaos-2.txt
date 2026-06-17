@@ -1,0 +1,4 @@
+x |= (1 << k); y &= ~(1 << k); z ^= mask;
+p->next = &node[i + 1]; *q = (a == b) ? c : d;
+const t = `${a}:${b}/${c}#${d}`;
+if (!(p && q) || (r != s)) { throw new Error("!@#"); }

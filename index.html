@@ -1,64 +1,173 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-cursor="line">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>type.sh — code typing trainer</title>
     <meta
       name="description"
-      content="A minimal code typing trainer for JavaScript, Kotlin and C++ with a Catppuccin Mocha theme."
+      content="A code typing trainer with a dashboard, game modes and a Catppuccin Mocha theme."
     />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e1e2e'/%3E%3Ctext x='14' y='66' font-family='monospace' font-size='44' fill='%23cba6f7'%3E&gt;_%3C/text%3E%3C/svg%3E"
     />
+    <!-- Chart.js for the dashboard WPM history (loaded before the module). -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
   </head>
   <body>
-    <div class="app">
-      <header class="header">
+    <!-- ============================= ONBOARDING ============================ -->
+    <section id="view-onboarding" class="view onboarding">
+      <form id="onboarding-form" class="onboarding-card" novalidate>
+        <div class="brand brand-lg">
+          <span class="brand-prompt">~/</span><span class="brand-name">type</span><span
+            class="brand-ext"
+            >.sh</span
+          >
+        </div>
+        <p class="onboarding-lead">Let's set up your trainer. You can change this later.</p>
+
+        <label class="ob-field">
+          <span class="ob-label">Name / Alias</span>
+          <input id="ob-name" type="text" placeholder="e.g. neo" maxlength="24" autocomplete="off" />
+        </label>
+
+        <div class="ob-field ob-toggle-row">
+          <span>
+            <span class="ob-label">Save progress</span>
+            <span class="ob-hint">Store your stats locally in this browser</span>
+          </span>
+          <label class="switch">
+            <input id="ob-save" type="checkbox" checked />
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+
+        <fieldset class="ob-field ob-cursor">
+          <legend class="ob-label">Cursor style</legend>
+          <div class="cursor-options">
+            <label class="cursor-option">
+              <input type="radio" name="cursor" value="block" />
+              <span class="cursor-card"><span class="cursor-glyph">█</span>Block</span>
+            </label>
+            <label class="cursor-option">
+              <input type="radio" name="cursor" value="line" checked />
+              <span class="cursor-card"><span class="cursor-glyph">|</span>Line</span>
+            </label>
+            <label class="cursor-option">
+              <input type="radio" name="cursor" value="underline" />
+              <span class="cursor-card"><span class="cursor-glyph">_</span>Underline</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <label class="ob-field">
+          <span class="ob-label">Preferred language</span>
+          <select id="ob-language"></select>
+        </label>
+
+        <button type="submit" class="btn primary btn-block">Enter type.sh →</button>
+      </form>
+    </section>
+
+    <!-- ============================== DASHBOARD =========================== -->
+    <section id="view-dashboard" class="view dashboard">
+      <header class="dash-header">
         <div class="brand">
           <span class="brand-prompt">~/</span><span class="brand-name">type</span><span
             class="brand-ext"
             >.sh</span
           >
         </div>
-
-        <div class="controls">
-          <label class="field" for="language-select">
-            <span class="field-label">Language</span>
-            <select id="language-select" aria-label="Select programming language"></select>
-          </label>
+        <div class="dash-greet">
+          <h1 id="dash-greeting">Welcome back</h1>
+          <span id="dash-streak" class="streak-chip">🔥 0 Day Streak</span>
         </div>
+        <button id="start-coding" class="btn primary" type="button">▶ Start Coding</button>
+      </header>
 
-        <div class="stats" role="status" aria-live="polite">
+      <div class="dash-grid">
+        <section class="card card-chart">
+          <h2 class="card-title">WPM — last 10 sessions</h2>
+          <div class="chart-box">
+            <canvas id="wpm-chart"></canvas>
+            <p id="chart-note" class="card-empty" hidden>Chart unavailable (offline).</p>
+          </div>
+        </section>
+
+        <section class="card card-heatmap">
+          <h2 class="card-title">Keyboard heatmap</h2>
+          <p class="card-sub">Where your typos concentrate</p>
+          <div id="heatmap" class="keyboard" aria-hidden="true"></div>
+          <div class="heat-legend">
+            <span>fewer</span>
+            <span class="heat-swatch heat-0"></span>
+            <span class="heat-swatch heat-1"></span>
+            <span class="heat-swatch heat-2"></span>
+            <span class="heat-swatch heat-3"></span>
+            <span class="heat-swatch heat-4"></span>
+            <span>more errors</span>
+          </div>
+        </section>
+
+        <section class="card card-recent">
+          <h2 class="card-title">Recent sessions</h2>
+          <table class="recent-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Mode</th>
+                <th>Language</th>
+                <th class="num">WPM</th>
+                <th class="num">Acc</th>
+              </tr>
+            </thead>
+            <tbody id="recent-body"></tbody>
+          </table>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <span>Catppuccin Mocha</span>
+        <span class="dot">•</span>
+        <span>Dashboard data is illustrative until you play</span>
+      </footer>
+    </section>
+
+    <!-- ============================== SESSION ============================= -->
+    <section id="view-session" class="view session">
+      <header class="sess-bar">
+        <button id="sess-exit" class="btn ghost" type="button" title="Back to dashboard (Esc)">
+          ← Dashboard
+        </button>
+        <div class="sess-meta">
+          <span id="sess-mode" class="sess-mode">Mode</span>
+          <span id="sess-lang" class="sess-lang">Language</span>
+        </div>
+        <div class="sess-stats">
+          <div class="stat stat-timer">
+            <span class="stat-value" id="sess-timer">0:00</span>
+            <span class="stat-label">Time</span>
+          </div>
           <div class="stat">
-            <span class="stat-value" id="stat-wpm">0</span>
+            <span class="stat-value" id="sess-wpm">0</span>
             <span class="stat-label">WPM</span>
           </div>
           <div class="stat">
-            <span class="stat-value" id="stat-accuracy">100%</span>
+            <span class="stat-value" id="sess-accuracy">100%</span>
             <span class="stat-label">Accuracy</span>
           </div>
         </div>
       </header>
 
-      <div class="subheader">
-        <div id="highscore" class="highscore empty">Personal Highscore — no record yet</div>
-        <button id="restart" class="btn ghost" type="button" title="Restart (Esc)">
-          ↻ Restart
-        </button>
-      </div>
-
       <main class="stage">
         <div class="progress" aria-hidden="true">
-          <div id="progress-bar" class="progress-bar"></div>
+          <div id="sess-progress" class="progress-bar"></div>
         </div>
 
         <div class="code-wrap">
           <div id="code" class="code" tabindex="-1" aria-label="Code to type"></div>
-
           <div id="focus-note" class="focus-note">Click here or start typing to focus</div>
-
           <div id="overlay" class="overlay">
             <div id="result" class="result"></div>
           </div>
@@ -79,12 +188,21 @@
       </main>
 
       <footer class="footer">
-        <span>Catppuccin Mocha</span>
-        <span class="dot">•</span>
         <span>Enter auto-skips indentation</span>
         <span class="dot">•</span>
-        <span>Esc to restart</span>
+        <span>Esc returns to the dashboard</span>
       </footer>
+    </section>
+
+    <!-- ============================ MODE PICKER =========================== -->
+    <div id="mode-modal" class="modal" role="dialog" aria-modal="true" aria-label="Choose a mode">
+      <div class="modal-dialog">
+        <div class="modal-head">
+          <h2>Choose your mode</h2>
+          <button id="mode-close" class="modal-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <div id="mode-grid" class="mode-grid"></div>
+      </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>
