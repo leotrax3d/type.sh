@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
 
-// Vanilla JavaScript project — no framework plugins required.
-// `public/` is served at the site root, so snippet files are reachable at
-// `/snippets/<file>` both in dev and in the production build.
+// On GitHub Actions the repo is served under /type.sh/ (project pages).
+// Locally (dev + preview) we stay at /.
+const base = process.env.GITHUB_ACTIONS ? '/type.sh/' : '/';
+
 export default defineConfig({
+  base,
   root: '.',
   publicDir: 'public',
   server: {
