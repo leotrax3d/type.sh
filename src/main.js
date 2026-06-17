@@ -2,8 +2,9 @@ import './style.css';
 import { TypingEngine } from './engine.js';
 import { getHighscore, saveResult } from './storage.js';
 
-const MANIFEST_URL = '/snippets/snippets.json';
-const SNIPPET_BASE = '/snippets/';
+// import.meta.env.BASE_URL mirrors the Vite `base` option ('/' in dev, '/type.sh/' on Pages).
+const MANIFEST_URL = `${import.meta.env.BASE_URL}snippets/snippets.json`;
+const SNIPPET_BASE = `${import.meta.env.BASE_URL}snippets/`;
 
 const els = {
   language: document.getElementById('language-select'),
